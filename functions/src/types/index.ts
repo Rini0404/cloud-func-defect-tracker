@@ -34,3 +34,13 @@ export enum DefectType {
   FaultyYarn = 'FaultyYarn',
   Holes = 'Holes',
 }
+
+interface DefectData {
+  [key: string]: any; // or a more specific type for your defect data
+}
+
+export interface DefectsByCategory {
+  [category: string]: {
+      [type: string]: DefectData[];
+  };
+}
