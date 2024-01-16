@@ -2,10 +2,16 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { DefectCategory, DefectsByCategory } from './types';
 import { handleHumanError, handleMachineError, handleManufacturerError } from './controllers/addDefect';
+import * as cors from 'cors';
 
 admin.initializeApp();
 
-export const addDefect = functions.https.onRequest(async (request, response) => {
+const corsHandler = cors({ origin: true });
+
+
+
+export const addDefect = functions.https.onRequest((request, response) => {
+  corsHandler(request, response, async () => {
   // Assuming the request body contains 'type', 'category', and 'date'
   const { type, category, date } = request.body;
 
@@ -39,34 +45,35 @@ export const addDefect = functions.https.onRequest(async (request, response) => 
     console.error('Error in addDefect:', error);
     response.status(500).send('Internal Server Error');
   }
-});
+})});
 
 
-export const getAllDefects = functions.https.onRequest(async (request, response) => {
-  try {
-    let allDefects: DefectsByCategory = {}; // Using the defined type
+export const getAllDefects = functions.https.onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      let allDefects: DefectsByCategory = {}; // Using the defined type
 
-    // List of all categories
-    const categories = [DefectCategory.HumanError, DefectCategory.MachineError, DefectCategory.ManufacturerError];
+      // List of all categories
+      const categories = [DefectCategory.HumanError, DefectCategory.MachineError, DefectCategory.ManufacturerError];
 
-    // Iterate over each category
-    for (const category of categories) {
-      const categoryRef = admin.firestore().collection('defects').doc(category);
-      const defectTypesSnapshot = await categoryRef.listCollections();
+      // Iterate over each category
+      for (const category of categories) {
+        const categoryRef = admin.firestore().collection('defects').doc(category);
+        const defectTypesSnapshot = await categoryRef.listCollections();
 
-      allDefects[category] = {}; // TypeScript now understands the structure
+        allDefects[category] = {}; // TypeScript now understands the structure
 
 
-      // Iterate over each defect type within the category
-      for (const typeCollection of defectTypesSnapshot) {
-        const typeSnapshot = await typeCollection.get();
-        allDefects[category][typeCollection.id] = typeSnapshot.docs.map(doc => doc.data());
+        // Iterate over each defect type within the category
+        for (const typeCollection of defectTypesSnapshot) {
+          const typeSnapshot = await typeCollection.get();
+          allDefects[category][typeCollection.id] = typeSnapshot.docs.map(doc => doc.data());
+        }
       }
+      
+      response.status(200).json(allDefects);
+    } catch (error) {
+      console.error('Error in getAllDefects:', error);
+      response.status(500).send('Internal Server Error');
     }
-
-    response.status(200).json(allDefects);
-  } catch (error) {
-    console.error('Error in getAllDefects:', error);
-    response.status(500).send('Internal Server Error');
-  }
-});
+  })});
